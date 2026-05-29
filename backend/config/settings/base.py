@@ -104,6 +104,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
 
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'apps.users.backends.EmailOrPhoneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Internationalization
 LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'

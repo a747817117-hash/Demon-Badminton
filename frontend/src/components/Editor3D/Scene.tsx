@@ -1,94 +1,118 @@
-import { useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { useEditorStore } from '../../stores/editorStore';
 import RacketModel from './RacketModel';
 
-function SceneSetup() {
-  const { scene } = useThree();
-  const design = useEditorStore((state) => state.design);
-
-  useEffect(() => {
-    // Set background color
-    scene.background = new THREE.Color(design.backgroundColor);
-  }, [design.backgroundColor, scene]);
-
-  return null;
-}
-
-function Lighting() {
-  return (
-    <>
-      <ambientLight intensity={0.5} />
-      <directionalLight
-        position={[5, 5, 5]}
-        intensity={1}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <directionalLight position={[-3, 3, -3]} intensity={0.3} />
-      <pointLight position={[0, 3, 0]} intensity={0.5} />
-    </>
-  );
-}
+// 羽毛球场地颜色
+const COURT_COLORS = {
+  floor: '#2E7D32',      // 绿色场地
+  lines: '#ffffff',       // 白色线
+  border: '#1B5E20',      // 深绿色边框
+  wall: '#f5f5f5',        // 墙壁颜色
+};
 
 interface SceneProps {
   className?: string;
+  useCourtBackground?: boolean;
 }
 
-export default function Scene({ className }: SceneProps) {
-  const design = useEditorStore((state) => state.design);
-
+export default function Scene({ className, useCourtBackground = false }: SceneProps) {
   return (
     <div className={className} style={{ width: '100%', height: '100%' }}>
       <Canvas
         camera={{
-          position: [
-            design.cameraPosition.x,
-            design.cameraPosition.y,
-            design.cameraPosition.z,
-          ],
+          position: [2, 1.5, 2],
           fov: 45,
           near: 0.1,
-          far: 1000,
+          far: 100,
         }}
-        shadows
         gl={{
           antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.25,
+          powerPreference: 'default',
         }}
+        onCreated={({ scene }) => {
+          scene.background = new THREE.Color(useCourtBackground ? COURT_COLORS.wall : '#f0f0f0');
+        }}
+        fallback={
+          <div style={{ 
+            width: '100%', 
+            height: '100%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            background: '#f0f0f0'
+          }}>
+            <p style={{ color: '#666' }}>加载中...</p>
+          </div>
+        }
       >
-        <SceneSetup />
-        <Lighting />
+        {/* 灯光 */}
+        <ambientLight intensity={0.5} />
+        <directionalLight
+          position={[5, 8, 5]}
+          intensity={1.2}
+          castShadow
+        />
+        <directionalLight position={[-3, 5, -3]} intensity={0.4} />
+        <pointLight position={[0, 5, 0]} intensity={0.3} />
 
-        {/* Main racket model */}
+        {/* 球拍模型 */}
         <RacketModel />
 
-        {/* Ground plane with shadows */}
-        <ContactShadows
-          position={[0, -1.8, 0]}
-          opacity={0.4}
-          scale={10}
-          blur={2}
-          far={4}
-        />
+        {/* 地面/场地 */}
+        {useCourtBackground ? (
+          <>
+            {/* 羽毛球场地地面 */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]} receiveShadow>
+              <planeGeometry args={[20, 20]} />
+              <meshStandardMaterial color={COURT_COLORS.floor} />
+            </mesh>
+            
+            {/* 场地线 - 底线 */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.19, 3]}>
+              <planeGeometry args={[6.1, 0.05]} />
+              <meshStandardMaterial color={COURT_COLORS.lines} />
+            </mesh>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.19, -3]}>
+              <planeGeometry args={[6.1, 0.05]} />
+              <meshStandardMaterial color={COURT_COLORS.lines} />
+            </mesh>
+            
+            {/* 场地线 - 边线 */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3.05, -1.19, 0]}>
+              <planeGeometry args={[0.05, 6]} />
+              <meshStandardMaterial color={COURT_COLORS.lines} />
+            </mesh>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.05, -1.19, 0]}>
+              <planeGeometry args={[0.05, 6]} />
+              <meshStandardMaterial color={COURT_COLORS.lines} />
+            </mesh>
+            
+            {/* 场地线 - 中线 */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.18, 0]}>
+              <planeGeometry args={[0.05, 6]} />
+              <meshStandardMaterial color={COURT_COLORS.lines} />
+            </mesh>
+          </>
+        ) : (
+          <>
+            {/* 简单地面 */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]} receiveShadow>
+              <planeGeometry args={[20, 20]} />
+              <meshStandardMaterial color="#e5e5e5" />
+            </mesh>
+            <gridHelper args={[10, 20, '#cccccc', '#eeeeee']} position={[0, -1.19, 0]} />
+          </>
+        )}
 
-        {/* Environment for reflections */}
-        <Environment preset="studio" />
-
-        {/* Camera controls */}
+        {/* 控制器 */}
         <OrbitControls
-          makeDefault
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
-          minDistance={1.5}
-          maxDistance={10}
-          minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 1.5}
+          minDistance={1}
+          maxDistance={8}
+          target={[0, -0.2, 0]}
         />
       </Canvas>
     </div>
